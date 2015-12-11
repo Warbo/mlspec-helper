@@ -1,8 +1,11 @@
+{-# LANGUAGE RankNTypes, FlexibleInstances, FlexibleContexts, KindSignatures, ScopedTypeVariables, MultiParamTypeClasses #-}
 module MLSpec.Helper where
 
 import Data.Char
 import Data.Typeable
+import IfCxt
 import Language.Haskell.TH.Syntax
+import Test.QuickCheck
 import Test.QuickCheck.All
 import Test.QuickSpec
 import Test.QuickSpec.Signature
@@ -17,11 +20,15 @@ vToC x        = x
 isC n = let (c:_) = nameBase n
          in isUpper c || c `elem` ":["
 
--- FIXME: return makes for a pretty crappy generator...
+getArb :: forall a. (Typeable a, IfCxt (Arbitrary a)) => a -> Gen a
+getArb x = ifCxt (Proxy::Proxy (Arbitrary a))
+  arbitrary
+  (error "No arbitrary instance")
+
 addVars :: Sig -> Sig
 addVars sig = signature (sig : vs)
   where vs :: [Sig]
-        vs = [gvars (names (witness w)) (return (witness w)) |
+        vs = [gvars (names (witness w)) (getArb w) |
                 Some w <-         argumentTypes sig,
                 Some w `elem`    inhabitedTypes sig,
                 Some w `notElem`  variableTypes sig]
