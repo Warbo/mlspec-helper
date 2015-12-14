@@ -1,10 +1,10 @@
-{-# LANGUAGE RankNTypes, FlexibleInstances, FlexibleContexts, KindSignatures, ScopedTypeVariables, MultiParamTypeClasses, TemplateHaskell #-}
-{-# OPTIONS_GHC -fdefer-type-errors #-}
+{-# LANGUAGE RankNTypes, FlexibleInstances, FlexibleContexts, KindSignatures, ScopedTypeVariables, MultiParamTypeClasses, TemplateHaskell, ImpredicativeTypes #-}
 module MLSpec.Helper where
 
 import Data.Char
 import Data.Generics.Aliases
 import Data.Typeable
+import Data.Word
 import IfCxt
 import Language.Haskell.TH.Syntax
 import System.IO
@@ -58,7 +58,7 @@ getArb x = ifCxt (Proxy::Proxy (Arbitrary a))
 -}
 
 getArb :: (Typeable a) => a -> Gen a
-getArb = extM (extM (extM (extM arbNope arbBool) arbMaybe) arbList) arbArb
+getArb = extM (extM (extM (extM arbNope arbBool) arbMaybe) arbList) arbM
   where arbNope :: Typeable a => a -> Gen a
         arbNope x = error ("No generator for " ++ show (typeRep [x]))
         arbBool :: Bool -> Gen Bool
@@ -67,8 +67,8 @@ getArb = extM (extM (extM (extM arbNope arbBool) arbMaybe) arbList) arbArb
         arbMaybe _ = arbitrary
         arbList :: [Char] -> Gen [Char]
         arbList _ = arbitrary
-        arbArb :: (Arbitrary a) => a -> Gen a
-        arbArb _ = arbitrary
+        arbM :: Maybe Word8 -> Gen (Maybe Word8)
+        arbM _ = arbitrary
 
 addVars :: Sig -> Sig
 addVars sig = signature (sig : vs)
