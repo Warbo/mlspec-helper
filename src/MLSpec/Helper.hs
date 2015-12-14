@@ -13,6 +13,9 @@ import Test.QuickSpec
 import Test.QuickSpec.Signature
 import Test.QuickSpec.Utils.Typed
 
+-- Added these to make testing easier
+import Data.Word
+
 mono = fmap vToC . monomorphic
 
 vToC (VarE n) = if isC n then ConE n else VarE n
