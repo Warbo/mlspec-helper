@@ -1,4 +1,4 @@
-{-# LANGUAGE RankNTypes, FlexibleInstances, FlexibleContexts, KindSignatures, ScopedTypeVariables, MultiParamTypeClasses #-}
+{-# LANGUAGE RankNTypes, FlexibleInstances, FlexibleContexts, KindSignatures, ScopedTypeVariables, MultiParamTypeClasses, TemplateHaskell #-}
 module MLSpec.Helper where
 
 import Data.Char
@@ -15,6 +15,8 @@ import Test.QuickSpec.Utils.Typed
 
 -- Added these to make testing easier
 import Data.Word
+
+mkIfCxtInstances ''Arbitrary
 
 mono = fmap vToC . monomorphic
 
