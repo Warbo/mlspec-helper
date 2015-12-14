@@ -58,7 +58,7 @@ getArb x = ifCxt (Proxy::Proxy (Arbitrary a))
 -}
 
 getArb :: (Typeable a) => a -> Gen a
-getArb = extM (extM (extM arbNope arbBool) arbMaybe) arbList
+getArb = extM (extM (extM (extM arbNope arbBool) arbMaybe) arbList) arbArb
   where arbNope :: Typeable a => a -> Gen a
         arbNope x = error ("No generator for " ++ show (typeRep [x]))
         arbBool :: Bool -> Gen Bool
@@ -67,6 +67,8 @@ getArb = extM (extM (extM arbNope arbBool) arbMaybe) arbList
         arbMaybe _ = arbitrary
         arbList :: [Char] -> Gen [Char]
         arbList _ = arbitrary
+        arbArb :: (Arbitrary a) => a -> Gen a
+        arbArb _ = arbitrary
 
 addVars :: Sig -> Sig
 addVars sig = signature (sig : vs)
