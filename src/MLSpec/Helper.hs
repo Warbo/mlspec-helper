@@ -3,6 +3,7 @@
 module MLSpec.Helper where
 
 import Data.Char
+import Data.Generics.Aliases
 import Data.Typeable
 import IfCxt
 import Language.Haskell.TH.Syntax
@@ -17,6 +18,7 @@ import Data.Constraint
 import Control.Exception
 import System.IO.Unsafe
 
+{-
 getArb :: (Typeable a) => a -> Gen a
 getArb x = unsafePerformIO $ do
     res <- try $ evaluate $ arb' Dict x
@@ -26,6 +28,14 @@ getArb x = unsafePerformIO $ do
 
 arb' :: (Dict (Arbitrary a)) -> a -> Gen a
 arb' Dict _ = arbitrary
+
+haveArb :: (Typeable a) => a -> Bool
+haveArb x = unsafePerformIO $ do
+    res <- try $ evaluate $ arb' Dict x
+    case res of
+        Right y             -> return True
+        Left  (ErrorCall _) -> return False
+-}
 
 --mkIfCxtInstances ''Arbitrary
 
@@ -47,11 +57,17 @@ getArb x = ifCxt (Proxy::Proxy (Arbitrary a))
                        return (error "No arbitrary instance")))
 -}
 
+getArb :: (Typeable a) => a -> Gen a
+getArb = extM (\x -> error ("No generator for " ++ show (typeRep [x])))
+              (\x -> (arbitrary :: Gen Bool))
+
 addVars :: Sig -> Sig
 addVars sig = signature (sig : vs)
   where vs :: [Sig]
         vs = [gvars (names (witness w)) (getArb (witness w)) |
-                Some w <-         argumentTypes sig,
-                Some w `notElem`  variableTypes sig]
+                  Some w <-         argumentTypes sig
+                , Some w `notElem`  variableTypes sig
+                --, haveArb (witness w)
+                ]
         names x = let n = show (typeRep [x])
                    in [n ++ "1", n ++ "2", n ++ "3"]
