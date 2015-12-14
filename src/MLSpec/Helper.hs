@@ -32,7 +32,7 @@ getArb x = ifCxt (Proxy::Proxy (Arbitrary a))
 addVars :: Sig -> Sig
 addVars sig = signature (sig : vs)
   where vs :: [Sig]
-        vs = [gvars (names (witness w)) (getArb w) |
+        vs = [gvars (names (witness w)) (getArb (witness w)) |
                 Some w <-         argumentTypes sig,
                 Some w `notElem`  variableTypes sig]
         names x = let n = show (typeRep [x])
