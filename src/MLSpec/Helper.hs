@@ -5,6 +5,8 @@ import Data.Char
 import Data.Typeable
 import IfCxt
 import Language.Haskell.TH.Syntax
+import System.IO
+import System.IO.Unsafe
 import Test.QuickCheck
 import Test.QuickCheck.All
 import Test.QuickSpec
@@ -20,10 +22,12 @@ vToC x        = x
 isC n = let (c:_) = nameBase n
          in isUpper c || c `elem` ":["
 
+{-# NOINLINE getArb #-}
 getArb :: forall a. (Typeable a, IfCxt (Arbitrary a)) => a -> Gen a
 getArb x = ifCxt (Proxy::Proxy (Arbitrary a))
   arbitrary
-  (error "No arbitrary instance")
+  (unsafePerformIO (do hPutStrLn stderr ("No arbitrary for " ++ show (typeRep [x]))
+                       return (error "No arbitrary instance")))
 
 addVars :: Sig -> Sig
 addVars sig = signature (sig : vs)
