@@ -30,7 +30,6 @@ addVars sig = signature (sig : vs)
   where vs :: [Sig]
         vs = [gvars (names (witness w)) (getArb w) |
                 Some w <-         argumentTypes sig,
-                Some w `elem`    inhabitedTypes sig,
                 Some w `notElem`  variableTypes sig]
         names x = let n = show (typeRep [x])
                    in [n ++ "1", n ++ "2", n ++ "3"]
