@@ -58,9 +58,10 @@ getArb x = ifCxt (Proxy::Proxy (Arbitrary a))
 -}
 
 getArb :: (Typeable a) => a -> Gen a
-getArb = extM (\x -> error ("No generator for " ++ show (typeRep [x]))) $
-           extM arbBool arbMaybe
-  where arbBool :: Bool -> Gen Bool
+getArb = extM (extM arbNope arbBool) arbMaybe
+  where arbNope :: Typeable a => a -> Gen a
+        arbNope x = error ("No generator for " ++ show (typeRep [x]))
+        arbBool :: Bool -> Gen Bool
         arbBool _ = arbitrary
         arbMaybe :: Maybe Char -> Gen (Maybe Char)
         arbMaybe _ = arbitrary
