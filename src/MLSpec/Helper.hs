@@ -1,4 +1,4 @@
-{-# LANGUAGE RankNTypes, FlexibleInstances, FlexibleContexts, KindSignatures, ScopedTypeVariables, MultiParamTypeClasses, TemplateHaskell, ImpredicativeTypes, InstanceSigs #-}
+{-# LANGUAGE RankNTypes, FlexibleInstances, FlexibleContexts, KindSignatures, ScopedTypeVariables, MultiParamTypeClasses, TemplateHaskell, ImpredicativeTypes, InstanceSigs, IncoherentInstances #-}
 module MLSpec.Helper where
 
 import Control.Monad
@@ -38,7 +38,7 @@ haveArb x = unsafePerformIO $ do
         Left  (ErrorCall _) -> return False
 -}
 
---mkIfCxtInstances ''Arbitrary
+mkIfCxtInstances ''Arbitrary
 
 mono = fmap vToC . monomorphic
 
