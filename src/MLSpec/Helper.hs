@@ -90,13 +90,13 @@ gConcat [] = []
 gConcat (GL xs:ys) = xs ++ gConcat ys
 
 lstArb :: (Typeable a) => a -> GenList a
-lstArb = extM (extM (extM {-(extM-} arbNope {-arbBool)-} arbMaybe) arbList) arbM
+lstArb = extM (extM (extM (extM arbNope arbBool) arbMaybe) arbList) arbM
 
 arbNope :: Typeable a => a -> GenList a
 arbNope x = GL []
 
---arbBool :: Bool -> GenList Bool
---arbBool _ = GL [arbitrary]
+arbBool :: Bool -> GenList Bool
+arbBool _ = GL [arbitrary]
 
 arbMaybe :: Maybe Char -> GenList (Maybe Char)
 arbMaybe _ = GL [arbitrary]

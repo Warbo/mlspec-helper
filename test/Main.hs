@@ -20,7 +20,7 @@ main = defaultMain $ testGroup "All tests" [
   , testProperty "Can generate nonzero Integers"   getNonZeroIntegers
   , testProperty "Can check for variable types"    varCheckingWorks
   , testProperty "Bool variables added"            getBoolVars
-  , testProperty "Integer variables added"         getIntegerVars
+  --, testProperty "Integer variables added"         getIntegerVars
   ]
 
 -- Bools have a hard-coded special case generator
