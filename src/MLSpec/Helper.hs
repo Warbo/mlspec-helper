@@ -1,4 +1,4 @@
-{-# LANGUAGE RankNTypes, FlexibleInstances, FlexibleContexts, KindSignatures, ScopedTypeVariables, MultiParamTypeClasses, TemplateHaskell, ImpredicativeTypes, InstanceSigs, IncoherentInstances #-}
+{-# LANGUAGE RankNTypes, FlexibleInstances, FlexibleContexts, KindSignatures, ScopedTypeVariables, TemplateHaskell #-}
 module MLSpec.Helper where
 
 import Control.Monad
@@ -49,11 +49,12 @@ vToC x        = x
 isC n = let (c:_) = nameBase n
          in isUpper c || c `elem` ":["
 
-getArbGen :: forall a. (Typeable a, IfCxt (Arbitrary a)) => a -> [Gen a]
+getArbGen :: forall a. (Typeable a, IfCxt (Arbitrary a)) => Witnessed a -> [Gen a]
 getArbGen x = ifCxt (Proxy::Proxy (Arbitrary a))
                     [arbitrary]
                     (listArb x)
 
+{-
 getArb :: (Typeable a) => a -> Gen a
 getArb = extM (extM (extM (extM arbNope arbBool) arbMaybe) arbList) arbM
   where arbNope :: Typeable a => a -> Gen a
@@ -66,6 +67,7 @@ getArb = extM (extM (extM (extM arbNope arbBool) arbMaybe) arbList) arbM
         arbList _ = arbitrary
         arbM :: Maybe Word8 -> Gen (Maybe Word8)
         arbM _ = arbitrary
+-}
 
 newtype GenList a = GL [Gen a]
 
@@ -78,30 +80,23 @@ instance Applicative GenList where
 
 instance Monad GenList where
   return = pure
-  (>>=) :: GenList a -> (a -> GenList b) -> GenList b
-  GL xs >>= f = result
-    where --result :: GenList b
-          result = GL [a]
-          --a :: Gen b
-          a = join b
-          --b :: Gen (Gen b)
+  GL xs >>= f = GL [a]
+    where a = join b
           b = fmap (\(GL ys) -> oneof ys) c
-          --c :: Gen (GenList b)
           c = fmap f d
-          --d :: Gen a
           d = oneof xs
 
 gConcat [] = []
 gConcat (GL xs:ys) = xs ++ gConcat ys
 
 lstArb :: (Typeable a) => a -> GenList a
-lstArb = extM (extM (extM (extM arbNope arbBool) arbMaybe) arbList) arbM
+lstArb = extM (extM (extM {-(extM-} arbNope {-arbBool)-} arbMaybe) arbList) arbM
 
 arbNope :: Typeable a => a -> GenList a
 arbNope x = GL []
 
-arbBool :: Bool -> GenList Bool
-arbBool _ = GL [arbitrary]
+--arbBool :: Bool -> GenList Bool
+--arbBool _ = GL [arbitrary]
 
 arbMaybe :: Maybe Char -> GenList (Maybe Char)
 arbMaybe _ = GL [arbitrary]
@@ -112,21 +107,20 @@ arbList _ = GL [arbitrary]
 arbM :: Maybe Word8 -> GenList (Maybe Word8)
 arbM _ = GL [arbitrary]
 
-arbGeneric :: (Typeable a) => a -> GenList a
-arbGeneric x = GL (getArbGen x)
-
-listArb :: (Typeable a) => a -> [Gen a]
-listArb x = case lstArb x of
+listArb :: (Typeable a) => Witnessed a -> [Gen a]
+listArb x = case lstArb (witness x) of
   GL xs -> xs
 
 addVars :: Sig -> Sig
 addVars sig = signature (sig : vs)
   where vs :: [Sig]
-        vs = [gvars (names (witness w)) gen |
-                  Some w <-         argumentTypes sig
-                , Some w `notElem`  variableTypes sig
-                , gen    <-         getArbGen (witness w)
+        vs = [gvars (names (Some w)) gen |
+                  Some w <-        argumentTypes sig
+                , Some w `notElem` variableTypes sig
+                , gen    <-        getArbGen w
                 --, haveArb (witness w)
                 ]
-        names x = let n = show (typeRep [x])
-                   in [n ++ "1", n ++ "2", n ++ "3"]
+        names w = let n = show (witnessType w)
+                   in ["var(" ++ n ++ ", 1)",
+                       "var(" ++ n ++ ", 2)",
+                       "var(" ++ n ++ ", 3)"]
