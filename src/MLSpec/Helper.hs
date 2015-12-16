@@ -49,14 +49,10 @@ vToC x        = x
 isC n = let (c:_) = nameBase n
          in isUpper c || c `elem` ":["
 
-{-
-{- # NOINLINE getArb # -}
-getArb :: forall a. (Typeable a, IfCxt (Arbitrary a)) => a -> Gen a
-getArb x = ifCxt (Proxy::Proxy (Arbitrary a))
-  arbitrary
-  (unsafePerformIO (do hPutStrLn stderr ("No arbitrary for " ++ show (typeRep [x]))
-                       return (error "No arbitrary instance")))
--}
+getArbGen :: forall a. (Typeable a, IfCxt (Arbitrary a)) => a -> [Gen a]
+getArbGen x = ifCxt (Proxy::Proxy (Arbitrary a))
+                    [arbitrary]
+                    (listArb x)
 
 getArb :: (Typeable a) => a -> Gen a
 getArb = extM (extM (extM (extM arbNope arbBool) arbMaybe) arbList) arbM
@@ -95,18 +91,29 @@ instance Monad GenList where
           --d :: Gen a
           d = oneof xs
 
+gConcat [] = []
+gConcat (GL xs:ys) = xs ++ gConcat ys
+
 lstArb :: (Typeable a) => a -> GenList a
 lstArb = extM (extM (extM (extM arbNope arbBool) arbMaybe) arbList) arbM
-  where arbNope :: Typeable a => a -> GenList a
-        arbNope x = GL []
-        arbBool :: Bool -> GenList Bool
-        arbBool _ = GL [arbitrary]
-        arbMaybe :: Maybe Char -> GenList (Maybe Char)
-        arbMaybe _ = GL [arbitrary]
-        arbList :: [Char] -> GenList [Char]
-        arbList _ = GL [arbitrary]
-        arbM :: Maybe Word8 -> GenList (Maybe Word8)
-        arbM _ = GL [arbitrary]
+
+arbNope :: Typeable a => a -> GenList a
+arbNope x = GL []
+
+arbBool :: Bool -> GenList Bool
+arbBool _ = GL [arbitrary]
+
+arbMaybe :: Maybe Char -> GenList (Maybe Char)
+arbMaybe _ = GL [arbitrary]
+
+arbList :: [Char] -> GenList [Char]
+arbList _ = GL [arbitrary]
+
+arbM :: Maybe Word8 -> GenList (Maybe Word8)
+arbM _ = GL [arbitrary]
+
+arbGeneric :: (Typeable a) => a -> GenList a
+arbGeneric x = GL (getArbGen x)
 
 listArb :: (Typeable a) => a -> [Gen a]
 listArb x = case lstArb x of
@@ -118,7 +125,7 @@ addVars sig = signature (sig : vs)
         vs = [gvars (names (witness w)) gen |
                   Some w <-         argumentTypes sig
                 , Some w `notElem`  variableTypes sig
-                , gen    <-         listArb (witness w)
+                , gen    <-         getArbGen (witness w)
                 --, haveArb (witness w)
                 ]
         names x = let n = show (typeRep [x])
