@@ -17,7 +17,6 @@ import Test.QuickSpec.Signature
 import Test.QuickSpec.Utils.Typed
 import Data.Constraint
 import Control.Exception
-import System.IO.Unsafe
 
 {-
 getArb :: (Typeable a) => a -> Gen a
@@ -101,7 +100,7 @@ arbBool _ = GL [arbitrary]
 arbMaybe :: Maybe Char -> GenList (Maybe Char)
 arbMaybe _ = GL [arbitrary]
 
-arbList :: [Char] -> GenList [Char]
+arbList :: String -> GenList String
 arbList _ = GL [arbitrary]
 
 arbM :: Maybe Word8 -> GenList (Maybe Word8)

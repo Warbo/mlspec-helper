@@ -63,8 +63,6 @@ hasVarType sig x = let vars  = variables sig
                     in not (null found)
 
 distinctIntegers :: [Integer] -> Bool
-distinctIntegers xs = if length (nub xs) < 2
-                         then discard
-                         else True
+distinctIntegers xs = (length (nub xs) >= 2) || discard
 
 failure = MkProperty (return (MkProp (MkRose failed [])))
