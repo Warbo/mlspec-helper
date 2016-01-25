@@ -31,15 +31,16 @@ vToC x        = x
 isC n = let (c:_) = nameBase n
          in isUpper c || c `elem` ":["
 
-addVars :: Sig -> Sig
-addVars sig = signature (sig : vs)
+addVars :: (Typeable a) => String -> [Gen a] -> Sig -> Sig
+addVars n gs sig = signature (sig : vs)
   where vs :: [Sig]
-        vs = [gvars (names (Some w)) gen |
-                  Some w <-        argumentTypes sig
-                , Some w `notElem` variableTypes sig
-                , gen    <-        getArbGen w
-                ]
-        names w = let n = show (witnessType w)
-                   in ["var(" ++ n ++ ", 1)",
-                       "var(" ++ n ++ ", 2)",
-                       "var(" ++ n ++ ", 3)"]
+        vs = map (gvars names) gs
+        names = ["var(" ++ n ++ ", 1)",
+                 "var(" ++ n ++ ", 2)",
+                 "var(" ++ n ++ ", 3)"]
+
+requiredVarTypes sig = [ someType (Some w)
+                       | Some w <-        argumentTypes sig
+                       , Some w `notElem` variableTypes sig]
+
+showReqVarTypes = unlines . map show . requiredVarTypes

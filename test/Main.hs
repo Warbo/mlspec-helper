@@ -32,6 +32,8 @@ main = defaultMain $ testGroup "All tests" [
   , testProperty "Can get argument types out"      haveArgTypes
   , testProperty "Argument types are correct"      checkArgTypes
   , testProperty "Can get variable types out"      haveVariableTypes
+  , testProperty "Bool variables added"            getBoolVars
+  , testProperty "Integer variables added"         getIntVars
   ]
 
 haveBoolGen = not (null boolGens)
@@ -64,6 +66,9 @@ haveVariableTypes s = expected === length [() | Some w <- variableTypes sig]
   where expected = if null s then 0 else 1
         sig      = gvars s (return True)
 
+getBoolVars = boolSig `hasVarType` (undefined :: Bool)
+getIntVars  = intSig  `hasVarType` (undefined :: Integer)
+
 -- Helpers
 
 hasVarType :: (Typeable a) => Sig -> a -> Bool
@@ -78,10 +83,10 @@ distinctVals gen = forAll genList distinct
         distinct xs = length (nub xs) >= 2
 
 boolSig' = signature ["not" `fun1` not]
-boolSig  = addVars boolSig'
+boolSig  = addVars "Bool" (getArbGen [undefined :: Bool]) boolSig'
 
 intSig' = signature ["fromInteger" `fun1` (fromInteger :: Integer -> Int)]
-intSig  = addVars intSig'
+intSig  = addVars "Integer" (getArbGen [undefined :: Integer]) intSig'
 
 boolGens = getArbGen (Witness (undefined :: Bool))
 intGens  = getArbGen (Witness (undefined :: Integer))
