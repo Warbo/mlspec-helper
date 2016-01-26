@@ -18,6 +18,7 @@ import           Test.QuickSpec.Utils.TypeRel
 import           Test.Tasty             (defaultMain, testGroup, localOption)
 import           Test.Tasty.QuickCheck
 
+mkIfCxtInstances ''Ord
 mkIfCxtInstances ''Arbitrary
 
 main = defaultMain $ testGroup "All tests" [
