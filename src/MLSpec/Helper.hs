@@ -59,5 +59,5 @@ quickSpecRaw = runTool $ \sig -> do
       reps = map (some2 (tagged term . head)) clss
       eqs  = equations clss
       allEqs = map (some (showTypedEquation sig)) eqs
-  print allEqs
+  putStrLn (unlines allEqs)
   return ()
