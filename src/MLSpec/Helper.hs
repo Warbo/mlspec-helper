@@ -17,8 +17,14 @@ import System.IO.Unsafe
 import Test.QuickCheck
 import Test.QuickCheck.All
 import Test.QuickSpec
+import Test.QuickSpec.Equation
+import qualified Test.QuickSpec.Generate as QS.Gen
+import Test.QuickSpec.Main
 import Test.QuickSpec.Signature
+import Test.QuickSpec.Term
+import Test.QuickSpec.TestTree
 import Test.QuickSpec.Utils.Typed
+import qualified Test.QuickSpec.Utils.TypeMap as TypeMap
 import Data.Constraint
 import Control.Exception
 
@@ -44,3 +50,14 @@ requiredVarTypes sig = [ someType (Some w)
                        , Some w `notElem` variableTypes sig]
 
 showReqVarTypes = unlines . map show . requiredVarTypes
+
+quickSpecRaw :: Signature a => a -> IO ()
+quickSpecRaw = runTool $ \sig -> do
+  r <- QS.Gen.generate False (const partialGen) sig
+  let clss = concatMap (some2 (map (Some . O) . classes)) (TypeMap.toList r)
+      univ = concatMap (some2 (map (tagged term))) clss
+      reps = map (some2 (tagged term . head)) clss
+      eqs  = equations clss
+      allEqs = map (some (showTypedEquation sig)) eqs
+  print allEqs
+  return ()
