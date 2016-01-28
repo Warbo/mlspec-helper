@@ -1,13 +1,17 @@
-{-# LANGUAGE TemplateHaskell, FlexibleInstances #-}
+{-# LANGUAGE TemplateHaskell, FlexibleInstances, OverloadedStrings, PartialTypeSignatures #-}
 
 module Main where
 
+import           Data.Aeson
 import           Data.List
+import           Data.Maybe
+import qualified Data.Stringable as S
 import           Data.Typeable
 import           MLSpec.Helper
 import           RuntimeArbitrary
 import           Test.QuickCheck
 import           Test.QuickCheck.Arbitrary
+import           Test.QuickCheck.Monadic
 import           Test.QuickCheck.Property
 import           Test.QuickSpec
 import           Test.QuickSpec.Signature
@@ -35,6 +39,9 @@ main = defaultMain $ testGroup "All tests" [
   , testProperty "Can get variable types out"      haveVariableTypes
   , testProperty "Bool variables added"            getBoolVars
   , testProperty "Integer variables added"         getIntVars
+  , testProperty "Get equations from Bool"         getBoolEqs
+  , testProperty "All equations are valid JSON"    allEqsAreJson
+  , testProperty "Expected equations are found"    foundExpectedEquations
   ]
 
 haveBoolGen = not (null boolGens)
@@ -70,7 +77,56 @@ haveVariableTypes s = expected === length [() | Some w <- variableTypes sig]
 getBoolVars = boolSig `hasVarType` (undefined :: Bool)
 getIntVars  = intSig  `hasVarType` (undefined :: Integer)
 
+getBoolEqs = monadicIO $ do
+  eqs <- run $ quickSpecRaw boolSig
+  assert (not (null eqs))
+
+allEqsAreJson = monadicIO $ do
+  eqs <- run $ quickSpecRaw boolSig
+  monitor (counterexample (unlines . map show $ eqs))
+  assert (all isJust (map dec eqs))
+  where dec :: JSON -> Maybe Value
+        dec (JSON s) = decode (S.fromString s)
+
+foundExpectedEquations = monadicIO $ do
+    eqs <- run $ quickSpecRaw boolSig
+    mapM (map dec eqs `contains`) expectedEquations
+  where
+
 -- Helpers
+
+dec :: JSON -> Value
+dec = fromJust . decode . S.fromString . unJson
+
+contains :: [Value] -> (Value, Value) -> _
+contains xs (x, y) = do
+  let r = any (equates x y) xs
+  if r then return ()
+       else debug $ concat [
+         "(",  S.toString (encode x), ", ", S.toString (encode y), ") ",
+         "not in\n", unlines (map (S.toString . encode) xs)]
+  assert r
+
+equates x y e = e `elem` [eq x y, eq y x]
+
+debug = monitor . counterexample
+
+eq x y = dec . JSON . concat $ [
+    "{\"relation\":\"~=\",\"lhs\":"
+  , S.toString (encode x)
+  , ",\"rhs\":"
+  , S.toString (encode y)
+  , "}"
+  ]
+
+-- | A list of terms which we should find equations for
+expectedEquations = [(and01, and10)]
+  where and01 = dec (JSON (app (app and (var 0)) (var 1)))
+        and10 = dec (JSON (app (app and (var 1)) (var 0)))
+        app :: String -> String -> String
+        app x y = "{\"role\": \"application\",\"lhs\":" ++ x ++ ", \"rhs\":" ++ y ++ "}"
+        and     = "{\"role\": \"constant\",\"symbol\":\"(Data.Bool.&&)\"}"
+        var n   = "{\"type\":\"Bool\",\"role\":\"variable\",\"id\":" ++ show n ++ "}"
 
 hasVarType :: (Typeable a) => Sig -> a -> Bool
 hasVarType sig x = let vars  = variables sig
@@ -83,7 +139,7 @@ distinctVals gen = forAll genList distinct
   where genList     = resize 1000 $ vectorOf 100 gen
         distinct xs = length (nub xs) >= 2
 
-boolSig' = signature ["not" `fun1` not]
+boolSig' = signature ["not" `fun1` not, "Data.Bool.&&" `fun2` (&&)]
 boolSig  = addVars "Bool" (getArbGen [undefined :: Bool]) boolSig'
 
 intSig' = signature ["fromInteger" `fun1` (fromInteger :: Integer -> Int)]
