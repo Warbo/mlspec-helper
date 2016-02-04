@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell, FlexibleInstances, OverloadedStrings, PartialTypeSignatures #-}
+{-# LANGUAGE TemplateHaskell, FlexibleInstances, FlexibleContexts, OverloadedStrings, PartialTypeSignatures, ScopedTypeVariables #-}
 
 module Main where
 

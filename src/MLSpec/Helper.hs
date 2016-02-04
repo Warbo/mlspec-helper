@@ -43,6 +43,7 @@ addVars n gs sig = signature (sig : vs)
   where vs :: [Sig]
         vs       = map (gvars names) gs
         names    = map mkName [1, 2, 3]
+        mkName :: Int -> String
         mkName i = show n ++ show i
 
 requiredVarTypes sig = [ someType (Some w)
