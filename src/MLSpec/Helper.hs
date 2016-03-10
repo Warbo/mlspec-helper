@@ -8,6 +8,7 @@ import Control.Monad
 import Data.Char
 import Data.Generics.Aliases
 import Data.List
+import Data.Stringable as S
 import Data.Typeable
 import Data.Word
 import IfCxt
@@ -25,7 +26,8 @@ import Test.QuickSpec.Signature
 import Test.QuickSpec.Term as T
 import Test.QuickSpec.TestTree
 import Test.QuickSpec.Utils.Typed
-import qualified Test.QuickSpec.Utils.TypeMap as TypeMap
+import qualified Test.QuickSpec.Utils.TypeMap  as TypeMap
+import qualified Test.QuickSpec.Utils.Typeable as Typeable
 import Data.Constraint
 import Control.Exception
 
@@ -46,11 +48,21 @@ addVars n gs sig = signature (sig : vs)
         mkName :: Int -> String
         mkName i = show n ++ show i
 
-requiredVarTypes sig = [ someType (Some w)
+requiredVarTypes sig = [ Typeable.unTypeRep (someType (Some w))
                        | Some w <-        argumentTypes sig
                        , Some w `notElem` variableTypes sig]
 
-showReqVarTypes = unlines . map show . requiredVarTypes
+showReqVarTypes = unlines . map (show . tyRepToJson) . requiredVarTypes
+
+tyRepToJson :: TypeRep -> JSON
+tyRepToJson t = case splitTyConApp t of
+    (tc, xs)   -> mkObj [(mkStr "tycon", tyConToJson tc),
+                         (mkStr "args",  mkArr (map tyRepToJson xs))]
+
+tyConToJson :: TyCon -> JSON
+tyConToJson x = mkObj [(mkStr "name",    mkStr (tyConName    x)),
+                       (mkStr "module",  mkStr (tyConModule  x)),
+                       (mkStr "package", mkStr (tyConPackage x))]
 
 quickSpecRaw :: Sig -> IO [JSON]
 quickSpecRaw sig = do
@@ -105,6 +117,9 @@ mkObj xs = JSON $ "{" ++ intercalate "," (map attr xs) ++ "}"
 
 mkStr :: String -> JSON
 mkStr s = JSON (show s)
+
+mkArr :: [JSON] -> JSON
+mkArr xs = JSON $ "[" ++ intercalate "," (map unJson xs) ++ "]"
 
 -- | Turns (k,v) into k:v
 attr :: (JSON, JSON) -> String

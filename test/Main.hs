@@ -3,6 +3,7 @@
 module Main where
 
 import           Data.Aeson
+import           Data.Aeson.Types
 import           Data.List
 import           Data.Maybe
 import qualified Data.Stringable as S
@@ -36,6 +37,8 @@ main = defaultMain $ testGroup "All tests" [
   , testProperty "Can check for variable types"    varCheckingWorks
   , testProperty "Can get argument types out"      haveArgTypes
   , testProperty "Argument types are correct"      checkArgTypes
+  , testProperty "JSON looks OK for Bool"          boolJsonMatches
+  , testProperty "Argument types are qualified"    argTypesQualified
   , testProperty "Can get variable types out"      haveVariableTypes
   , testProperty "Bool variables added"            getBoolVars
   , testProperty "Integer variables added"         getIntVars
@@ -69,6 +72,26 @@ haveArgTypes = 1 === length [() | Some w <- argumentTypes boolSig']
 checkArgTypes = typeRep [True] `elem` typeReps
   where argTypes = argumentTypes boolSig'
         typeReps = map (unTypeRep . witnessType) argTypes
+
+boolJsonMatches = fromRight . match . show . tyRepToJson . typeRep $ (Proxy :: Proxy Bool)
+  where match j = eitherDecode (S.fromString j) >>= (parseEither $ \x -> do
+          tc   <- x  .: "tycon"
+          args <- x  .: "args"
+          name <- tc .: "name"
+          mod  <- tc .: "module"
+          pkg  <- tc .: "package"
+          return $ args === ([]          :: [Value]) .&&.
+                   name === ("Bool"      :: String)  .&&.
+                   mod  === ("GHC.Types" :: String)  .&&.
+                   pkg  === ("ghc-prim"  :: String))
+
+argTypesQualified = all (fromRight . hasModule . show . tyRepToJson)
+                        (requiredVarTypes boolSig')
+  where hasModule :: String -> Either String Bool
+        hasModule s = eitherDecode (S.fromString s) >>= (parseEither $ \x -> do
+          tc  <- x  .: "tycon"
+          mod <- tc .: "module"
+          return (not (null (mod :: String))))
 
 haveVariableTypes s = expected === length [() | Some w <- variableTypes sig]
   where expected = if null s then 0 else 1
@@ -118,6 +141,9 @@ eq x y = dec . JSON . concat $ [
   , S.toString (encode y)
   , "}"
   ]
+
+fromRight (Left  e) = error e
+fromRight (Right x) = x
 
 -- | A list of terms which we should find equations for
 expectedEquations = [(and01, and10)]
