@@ -2,6 +2,7 @@
 
 module Main where
 
+import           Control.Monad (unless)
 import           Data.Aeson
 import           Data.Aeson.Types
 import           Data.List
@@ -74,7 +75,7 @@ checkArgTypes = typeRep [True] `elem` typeReps
         typeReps = map (unTypeRep . witnessType) argTypes
 
 boolJsonMatches = fromRight . match . show . tyRepToJson . typeRep $ (Proxy :: Proxy Bool)
-  where match j = eitherDecode (S.fromString j) >>= (parseEither $ \x -> do
+  where match j = eitherDecode (S.fromString j) >>= parseEither (\x -> do
           tc   <- x  .: "tycon"
           args <- x  .: "args"
           name <- tc .: "name"
@@ -88,7 +89,7 @@ boolJsonMatches = fromRight . match . show . tyRepToJson . typeRep $ (Proxy :: P
 argTypesQualified = all (fromRight . hasModule . show . tyRepToJson)
                         (requiredVarTypes boolSig')
   where hasModule :: String -> Either String Bool
-        hasModule s = eitherDecode (S.fromString s) >>= (parseEither $ \x -> do
+        hasModule s = eitherDecode (S.fromString s) >>= parseEither (\x -> do
           tc  <- x  .: "tycon"
           mod <- tc .: "module"
           return (not (null (mod :: String))))
@@ -114,7 +115,6 @@ allEqsAreJson = monadicIO $ do
 foundExpectedEquations = monadicIO $ do
     eqs <- run $ quickSpecRaw boolSig
     mapM (map dec eqs `contains`) expectedEquations
-  where
 
 -- Helpers
 
@@ -124,8 +124,7 @@ dec = fromJust . decode . S.fromString . unJson
 contains :: [Value] -> (Value, Value) -> _
 contains xs (x, y) = do
   let r = any (equates x y) xs
-  if r then return ()
-       else debug $ concat [
+  unless r $ debug $ concat [
          "(",  S.toString (encode x), ", ", S.toString (encode y), ") ",
          "not in\n", unlines (map (S.toString . encode) xs)]
   assert r
