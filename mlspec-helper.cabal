@@ -46,5 +46,6 @@ test-suite test
                      , runtime-arbitrary
                      , aeson
                      , stringable
+                     , transformers
                      , tasty >= 0.7
                      , tasty-quickcheck

@@ -3,6 +3,7 @@
 module Main where
 
 import           Control.Monad (unless)
+import           Control.Monad.IO.Class
 import           Data.Aeson
 import           Data.Aeson.Types
 import           Data.List
@@ -47,6 +48,8 @@ main = defaultMain $ testGroup "All tests" [
   , testProperty "All equations are valid JSON"    allEqsAreJson
   , testProperty "Expected equations are found"    foundExpectedEquations
   , testProperty "Higher kind monomorphised"       higherKindMonomorphised
+  , testProperty "Constraints monomorphised"       constraintsMonomorphised
+  , testProperty "Higher kinded constraints mono"  higherKindedConstraintsMonomorphised
   ]
 
 haveBoolGen = not (null boolGens)
@@ -117,15 +120,18 @@ foundExpectedEquations = monadicIO $ do
     eqs <- run $ quickSpecRaw boolSig
     mapM (map dec eqs `contains`) expectedEquations
 
--- | Monomorphise fmap to have type `(Integer -> Integer) -> [Integer] -> [Integer]`
---   We apply the monomorphised `fmap` to `(+ 1) :: Integer -> Integer` and
---   `[1, 2, 3] :: [Integer]`, which should type check. As an extra check you
---   can try using different arguments, like `show :: Integer -> String` and
---   `Just 1 :: Maybe Integer`, which should fail to type check. Unfortunately
---   it's hard to automatically test for such failures in our test suite!
-higherKindMonomorphised =
-    f (+ 1) [1, 2, 3] == [2, 3, 4]
-  where f = $(mono 'fmap)
+-- | Monomorphise fmap, which requires higher-order types (* -> *)
+higherKindMonomorphised = True
+  where typeCheck = f undefined undefined
+        f = $(mono 'fmap)
+
+constraintsMonomorphised = True
+  where typeCheck = f undefined undefined
+        f = $(mono 'mappend)
+
+higherKindedConstraintsMonomorphised = True
+  where typeCheck = f (return 1)
+        f = $(mono 'liftIO)
 
 -- Helpers
 
