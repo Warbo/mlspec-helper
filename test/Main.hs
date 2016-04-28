@@ -46,6 +46,7 @@ main = defaultMain $ testGroup "All tests" [
   , testProperty "Get equations from Bool"         getBoolEqs
   , testProperty "All equations are valid JSON"    allEqsAreJson
   , testProperty "Expected equations are found"    foundExpectedEquations
+  , testProperty "Higher kind monomorphised"       higherKindMonomorphised
   ]
 
 haveBoolGen = not (null boolGens)
@@ -115,6 +116,8 @@ allEqsAreJson = monadicIO $ do
 foundExpectedEquations = monadicIO $ do
     eqs <- run $ quickSpecRaw boolSig
     mapM (map dec eqs `contains`) expectedEquations
+
+higherKindMonomorphised = let f = $(mono 'fmap) in True
 
 -- Helpers
 

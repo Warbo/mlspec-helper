@@ -1,4 +1,4 @@
-{-# LANGUAGE RankNTypes, FlexibleInstances, FlexibleContexts, ScopedTypeVariables #-}
+{-# LANGUAGE RankNTypes, FlexibleInstances, FlexibleContexts, ScopedTypeVariables, TemplateHaskell, CPP #-}
 module MLSpec.Helper
        ( module MLSpec.Helper
        , module IfCxt
@@ -12,7 +12,9 @@ import Data.Stringable as S
 import Data.Typeable
 import Data.Word
 import IfCxt
-import Language.Haskell.TH.Syntax
+import Language.Haskell.TH
+--import Language.Haskell.TH.Syntax
+--import Language.Haskell.TH.Lib
 import RuntimeArbitrary
 import System.IO
 import System.IO.Unsafe
@@ -31,7 +33,7 @@ import qualified Test.QuickSpec.Utils.Typeable as Typeable
 import Data.Constraint
 import Control.Exception
 
-mono = fmap vToC . monomorphic
+mono = fmap vToC . monomorphic'
 
 vToC (VarE n) = if isC n then ConE n else VarE n
 vToC (ConE n) = if isC n then ConE n else VarE n
@@ -39,6 +41,61 @@ vToC x        = x
 
 isC n = let (c:_) = nameBase n
          in isUpper c || c `elem` ":["
+
+-- Adapted from Test.QuickCheck.All
+monomorphic' :: Name -> ExpQ
+monomorphic' t = do
+  ty0 <- fmap infoType (reify t)
+  let err msg = error $ msg ++ ": " ++ pprint ty0
+  (polys, ctx, ty) <- deconstructType' err ty0
+  case polys of
+    [] -> return (expName t)
+    _  -> do
+      ty'     <- monomorphiseType' err polys ty
+      return (SigE (expName t) ty')
+
+expName :: Name -> Exp
+expName n = if isVar n then VarE n else ConE n
+
+isVar :: Name -> Bool
+isVar = let isVar' (c:_) = not (isUpper c || c `elem` ":[")
+            isVar' _     = True
+         in isVar' . nameBase
+
+type Error = forall a. String -> a
+
+infoType :: Info -> Type
+#if __GLASGOW_HASKELL__ >= 711
+infoType (ClassOpI _ ty _) = ty
+infoType (DataConI _ ty _) = ty
+infoType (VarI _ ty _) = ty
+#else
+infoType (ClassOpI _ ty _ _) = ty
+infoType (DataConI _ ty _ _) = ty
+infoType (VarI _ ty _ _) = ty
+#endif
+
+deconstructType' :: Error -> Type -> Q ([(Name,Type)], Cxt, Type)
+deconstructType' err ty0@(ForallT xs ctx ty) = do
+  integer <- [t| Integer |]
+  --list    <- [t| []      |]
+  let subIn (PlainTV  x)       = (x, integer)
+      subIn (KindedTV x StarT) = (x, integer)
+      subIn _                  = err "Higher-kinded type variables in type"
+      force (_,_) = True
+      force _     = False
+  unless (all (force . subIn) xs) $ err "Higher-kinded type variables in type"
+  return (map subIn xs, ctx, ty)
+deconstructType' _ ty = return ([], [], ty)
+
+monomorphiseType' :: Error -> [(Name, Type)] -> Type -> TypeQ
+monomorphiseType' err polys ty = case ty of
+  (VarT n)        -> case lookup n polys of
+                          Just mono -> return mono
+                          Nothing   -> err ("No sub found for " ++ pprint n)
+  (AppT t1 t2)    -> liftM2 AppT (monomorphiseType' err polys t1) (monomorphiseType' err polys t2)
+  (ForallT _ _ _) -> err $ "Higher-ranked type"
+  _               -> return ty
 
 addVars :: (Typeable a) => String -> [Gen a] -> Sig -> Sig
 addVars n gs sig = signature (sig : vs)
