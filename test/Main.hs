@@ -117,7 +117,15 @@ foundExpectedEquations = monadicIO $ do
     eqs <- run $ quickSpecRaw boolSig
     mapM (map dec eqs `contains`) expectedEquations
 
-higherKindMonomorphised = let f = $(mono 'fmap) in True
+-- | Monomorphise fmap to have type `(Integer -> Integer) -> [Integer] -> [Integer]`
+--   We apply the monomorphised `fmap` to `(+ 1) :: Integer -> Integer` and
+--   `[1, 2, 3] :: [Integer]`, which should type check. As an extra check you
+--   can try using different arguments, like `show :: Integer -> String` and
+--   `Just 1 :: Maybe Integer`, which should fail to type check. Unfortunately
+--   it's hard to automatically test for such failures in our test suite!
+higherKindMonomorphised =
+    f (+ 1) [1, 2, 3] == [2, 3, 4]
+  where f = $(mono 'fmap)
 
 -- Helpers
 
