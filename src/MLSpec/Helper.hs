@@ -130,7 +130,7 @@ monomorphiseType' err polys ty = case ty of
   (AppT t1 t2)         -> liftM2 AppT (monomorphiseType' err polys t1) (monomorphiseType' err polys t2)
   (ForallT xs cxt ty0) -> do ty' <- monoGo err polys ty
                              case ty' of
-                                  Nothing -> return ty0 -- $ "Higher-ranked type"
+                                  Nothing -> return ty0
                                   Just m  -> return m
   _                    -> return ty
 

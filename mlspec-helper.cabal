@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                mlspec-helper
-version:             0.1.0.4
+version:             0.1.0.5
 synopsis:            Helper modules for running MLSpec
 -- description:         
 homepage:            http://chriswarbo.net/git/mlspec-helper
