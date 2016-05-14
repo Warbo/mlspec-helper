@@ -167,7 +167,7 @@ expectedEquations = [(and01, and10)]
         and10 = dec (JSON (app (app and (var 1)) (var 0)))
         app :: String -> String -> String
         app x y = "{\"role\": \"application\",\"lhs\":" ++ x ++ ", \"rhs\":" ++ y ++ "}"
-        and     = "{\"role\": \"constant\",\"symbol\":\"(Data.Bool.&&)\"}"
+        and     = "{\"role\": \"constant\",\"type\":\"Bool -> Bool -> Bool\",\"symbol\":\"(Data.Bool.&&)\"}"
         var n   = "{\"type\":\"Bool\",\"role\":\"variable\",\"id\":" ++ show n ++ "}"
 
 hasVarType :: (Typeable a) => Sig -> a -> Bool

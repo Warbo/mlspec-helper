@@ -229,6 +229,7 @@ showTerm t = case t of
     ]
   Const s -> mkObj [
       (mkStr "role", mkStr "constant")
+    , (mkStr "type", mkStr (show (symbolType s)))
     , (mkStr "symbol", mkStr (show s))
     ]
   App x y -> mkObj [
