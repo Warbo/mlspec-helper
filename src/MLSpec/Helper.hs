@@ -24,7 +24,8 @@ import Test.QuickSpec
 import Test.QuickSpec.Equation
 import qualified Test.QuickSpec.Generate as QS.Gen
 import Test.QuickSpec.Main
-import Test.QuickSpec.Signature
+import qualified Test.QuickSpec.Reasoning.NaiveEquationalReasoning as NER
+import Test.QuickSpec.Signature as QS
 import Test.QuickSpec.Term as T
 import Test.QuickSpec.TestTree
 import Test.QuickSpec.Utils.Typed
@@ -198,6 +199,8 @@ tyConToJson x = mkObj [(mkStr "name",    mkStr (tyConName    x)),
                        (mkStr "module",  mkStr (tyConModule  x)),
                        (mkStr "package", mkStr (tyConPackage x))]
 
+-- | Performs the core equation-finding phase of QuickSpec. No simplification is
+--   performed. Taken from Test.QuickSpec.Main, cleaned up and outputs to JSON.
 quickSpecRaw :: Sig -> IO [JSON]
 quickSpecRaw sig = do
   r <- QS.Gen.generate False (const partialGen) sig
@@ -207,6 +210,45 @@ quickSpecRaw sig = do
       eqs  = equations clss
       allEqs = map (some (showEq sig)) eqs
   return allEqs
+
+-- | Performs the equation-finding and simplification phases of QuickSpec.
+--   Taken from Test.QuickSpec.Main, cleaned up and outputs to JSON.
+quickSpecAndSimplify :: Sig -> IO [JSON]
+quickSpecAndSimplify sig_ = do
+    r <- QS.Gen.generate False (const partialGen) sig
+    let clss     = concatMap (some2 (map (Some . O) . classes)) (TypeMap.toList r)
+        univ     = concatMap (some2 (map (tagged term))) clss
+        reps     = map (some2 (tagged term . head)) clss
+        eqs      = equations clss
+        ctx      = initial (maxDepth sig) (symbols sig) univ
+        allEqs   = map (some eraseEquation) eqs
+        (bg, fg) = partition isBackground allEqs
+        pruned   = filter keep
+                          (prune ctx
+                                 (filter (not . isUndefined) (map erase reps))
+                                 id
+                                 (bg ++ fg))
+    return (map (showEq' sig) pruned)
+  where
+    vars    = T.vars
+    funs    = T.funs
+    symbols = QS.symbols
+    initial = NER.initial
+
+    sig = signature sig_ `mappend` undefinedsSig (signature sig_)
+
+    keep eq = not (isBackground eq) || absurd eq
+
+    absurd (t :=: u) = absurd1 t u || absurd1 u t
+
+    absurd1 (Var x) t = x `notElem` vars t
+    absurd1 _ _       = False
+
+    isBackground = all silent . eqnFuns
+
+    eqnFuns (t :=: u) = funs t ++ funs u
+
+    isGround (t :=: u) = null (vars t) && null (vars u)
 
 showEq :: Sig -> TypedEquation a -> JSON
 showEq sig e = showEq' sig (eraseEquation e)
