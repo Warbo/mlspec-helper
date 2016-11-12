@@ -11,7 +11,7 @@ import           Data.Maybe
 import qualified Data.Stringable as S
 import           Data.Typeable
 import           MLSpec.Helper
-import           RuntimeArbitrary
+import           Test.RuntimeArbitrary
 import           Test.QuickCheck
 import           Test.QuickCheck.Arbitrary
 import           Test.QuickCheck.Monadic

@@ -13,9 +13,7 @@ import Data.Typeable
 import Data.Word
 import IfCxt
 import Language.Haskell.TH
---import Language.Haskell.TH.Syntax
---import Language.Haskell.TH.Lib
-import RuntimeArbitrary
+import Test.RuntimeArbitrary
 import System.IO
 import System.IO.Unsafe
 import Test.QuickCheck
