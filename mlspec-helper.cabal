@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                mlspec-helper
-version:             0.1.0.6
+version:             0.2.0.0
 synopsis:            Helper modules for running MLSpec
 -- description:         
 homepage:            http://chriswarbo.net/git/mlspec-helper
@@ -47,5 +47,5 @@ test-suite test
                      , aeson
                      , stringable
                      , transformers
-                     , tasty >= 0.7
+                     , tasty >= 0.11.2.1
                      , tasty-quickcheck
