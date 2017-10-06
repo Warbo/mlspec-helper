@@ -1,0 +1,54 @@
+From: Chris Warburton
+Date: Fri, 06 Oct 2017 10:06:58 +0100
+State: resolved
+Subject: Unsuitable types chosen by monomorphiser
+Message-Id: <a67f57f49c25db4c-0-artemis@nixos>
+resolution: fixed
+
+The 'mono' function should turn a polymorphic function (given by name,
+in Template Haskell) into a monomorphic one, such that type variables
+are replaced by something we can explore; by default, we replace type
+variables of kind '*' with 'Integer' and those of kind '* -> *' with
+'[]'.
+
+However, we're getting a runtime problem with
+
+  $(mono ('Data.List.Extras.Argmax.argmaxWithMax))
+
+That function has type:
+
+  Ord b => (a -> b) -> [a] -> (a, b)
+
+When run from MLSpec, this is being instantiated to:
+
+  (Integer -> GHC.Generics.Fixity) -> [Integer] -> (Integer, GHC.Generics.Fixity)
+
+When run from GHCi, we're getting:
+
+  (Integer -> Word) -> [Integer] -> (Integer, Word)
+
+Clearly there's something nondeterministic going on. This is causing
+MLSpec to fail by complaining that 'GHC.Generics.Fixity' has no instance
+for 'Serialize' (since this function just so happens to be 'hashable').
+
+It looks like the culprit is 'instantiateConstraintsDefault', which is
+given a context, a type variable and a "default" type, and does the
+following:
+
+ - Construct a type 'cxt => var', where 'cxt' and 'var' are the context
+   and type variable, respectively.
+ - Run 'satisfyAll' on this type, to get a list of possible
+   instantiations for the variable which satisfy the constraint.
+ - If the list is empty, returning the "default" ('Integer' or '[]').
+ - If the list is non-empty, returning whatever's at its head.
+
+To fix this, we can either:
+
+ - Add the 'Serialize' constraint to the context we're looking up. This
+   may be tricky.
+ - See if the "default" is anywhere in the list, and if so pick that
+   rather than whatever's at the head.
+
+I prefer the second option, since it makes 'easy' cases deterministic
+(i.e. those where there aren't custom constraints on the type, such that
+e.g. 'Integer' isn't an instance)

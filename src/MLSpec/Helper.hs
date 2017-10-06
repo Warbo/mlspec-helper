@@ -112,13 +112,20 @@ templateDebug msg = unless True (reportWarning msg)
 
 instantiateConstraintsDefault :: Cxt -> Name -> Type -> Q Type
 instantiateConstraintsDefault cxt n def = do
+    -- Find as many types as we can which are instances of all the constraints
+    -- in cxt. Warning: The order of the resulting list is non-deterministic.
     guesses <- satisfyAll cs
     templateDebug $ show ("cxt", cxt, "guesses", guesses, "n", n, "def", def)
-    case guesses of
-         (g:_) -> do templateDebug ("Choosing " ++ show (ConT g))
-                     return (ConT g)
-         []    -> do templateDebug ("Defaulting to " ++ show def)
-                     return def
+    -- If our default is in the result list, then use it. This brings back
+    -- determinism in many cases.
+    if elem def (map ConT guesses)
+       then do templateDebug ("Picking default " ++ show def)
+               return def
+       else case guesses of
+              (g:_) -> do templateDebug ("Choosing " ++ show (ConT g))
+                          return (ConT g)
+              []    -> do templateDebug ("Defaulting to " ++ show def)
+                          return def
   where cs = snd (head (withConstraints cxt [n]))
 
 monomorphiseType' :: String -> [(Name, Type)] -> Type -> TypeQ

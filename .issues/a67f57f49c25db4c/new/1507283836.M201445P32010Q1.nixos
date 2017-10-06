@@ -1,0 +1,8 @@
+From: Chris Warburton
+Date: Fri, 06 Oct 2017 10:56:53 +0100
+Subject: Re: Unsuitable types chosen by monomorphiser
+Message-Id: <a67f57f49c25db4c-e84eb16e627caad9-artemis@nixos>
+References: <a67f57f49c25db4c-0-artemis@nixos>
+In-Reply-To: <a67f57f49c25db4c-0-artemis@nixos>
+
+We check if the default is usable, and pick it if so.
