@@ -99,7 +99,6 @@ deconstructType' err ty0@(ForallT xs ctx ty) = do
                       _  -> (x, instantiateConstraintsDefault ctx x
                                   (error $ "No default for higher kind " ++ pprint k))
       force (_,_) = True
-      force _     = False
   unless (all (force . subIn) xs) $ error (err ++ " Higher-kinded type variables in type")
   let xs'  = map subIn xs
       xs'' = mapM (\(x, y) -> y >>= (\y' -> return (x, y')))  xs'
@@ -118,7 +117,7 @@ instantiateConstraintsDefault cxt n def = do
     templateDebug $ show ("cxt", cxt, "guesses", guesses, "n", n, "def", def)
     -- If our default is in the result list, then use it. This brings back
     -- determinism in many cases.
-    if elem def (map ConT guesses)
+    if def `elem` map ConT guesses
        then do templateDebug ("Picking default " ++ show def)
                return def
        else case guesses of
@@ -147,7 +146,7 @@ withConstraints :: Cxt -> [Name] -> [(Name, [Name])]
 withConstraints cxt []     = []
 withConstraints cxt (n:ns) = (n, go [] cxt) : withConstraints cxt ns
   where go acc [] = acc
-        go acc ((AppT (ConT c) (VarT m)):xs) | n == m = go (c:acc) xs
+        go acc (AppT (ConT c) (VarT m):xs) | n == m = go (c:acc) xs
         go acc (_:xs) = go acc xs
 
 -- Given a class name, return all instances in scope
@@ -164,9 +163,9 @@ directInstancesOf c = do
     xs <- allInstancesOf c
     templateDebug ("directInstancesOf " ++ show c ++ ": " ++ show xs)
     return (getNames xs)
-  where getNames ((InstanceD [] (AppT (ConT d) (ConT i))  _):xs) | d == c = i : getNames xs
-        getNames (_:xs) = getNames xs
-        getNames [] = []
+  where getNames (InstanceD [] (AppT (ConT d) (ConT i)) _:xs) | d == c = i : getNames xs
+        getNames (_                                      :xs)          =     getNames xs
+        getNames []                                                    = []
 
 -- Given a list of class names, return a list of type (constructors) which are
 -- instances of all of those classes simultaneously
