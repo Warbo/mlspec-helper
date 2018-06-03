@@ -203,28 +203,27 @@ tyConToJson x = mkObj [(mkStr "name",    mkStr (tyConName    x)),
                        (mkStr "module",  mkStr (tyConModule  x)),
                        (mkStr "package", mkStr (tyConPackage x))]
 
+quickSpecInit sig = do
+  r <- QS.Gen.generate False (const partialGen) sig
+  let clss = concatMap (some2 (map (Some . O) . classes)) (TypeMap.toList r)  --4
+      univ = concatMap (some2 (map (tagged term))) clss  --3
+      reps = map (some2 (tagged term . head)) clss  --2
+      eqs  = equations clss
+  return (reps, univ, eqs) --1
+
 -- | Performs the core equation-finding phase of QuickSpec. No simplification is
 --   performed. Taken from Test.QuickSpec.Main, cleaned up and outputs to JSON.
 quickSpecRaw :: Sig -> IO [JSON]
 quickSpecRaw sig = do
-  r <- QS.Gen.generate False (const partialGen) sig
-  let clss = concatMap (some2 (map (Some . O) . classes)) (TypeMap.toList r)
-      univ = concatMap (some2 (map (tagged term))) clss
-      reps = map (some2 (tagged term . head)) clss
-      eqs  = equations clss
-      allEqs = map (some (showEq sig)) eqs
-  return allEqs
+  (_, _, eqs) <- quickSpecInit sig
+  return (map (some (showEq sig)) eqs)
 
 -- | Performs the equation-finding and simplification phases of QuickSpec.
 --   Taken from Test.QuickSpec.Main, cleaned up and outputs to JSON.
 quickSpecAndSimplify :: Sig -> IO [JSON]
 quickSpecAndSimplify sig_ = do
-    r <- QS.Gen.generate False (const partialGen) sig
-    let clss     = concatMap (some2 (map (Some . O) . classes)) (TypeMap.toList r)
-        univ     = concatMap (some2 (map (tagged term))) clss
-        reps     = map (some2 (tagged term . head)) clss
-        eqs      = equations clss
-        ctx      = initial (maxDepth sig) (symbols sig) univ
+    (reps, univ, eqs) <- quickSpecInit sig
+    let ctx      = initial (maxDepth sig) (symbols sig) univ
         allEqs   = map (some eraseEquation) eqs
         (bg, fg) = partition isBackground allEqs
         pruned   = filter keep
