@@ -22,8 +22,8 @@ library
   -- other-extensions:    
   build-depends:       base >=4.8 && <4.10
                      , template-haskell >=2.10 && <2.11
-                     , QuickCheck
-                     , quickspec
+                     , QuickCheck < 2.10
+                     , quickspec < 2
                      , ifcxt
                      , constraints
                      , syb
