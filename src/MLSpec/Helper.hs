@@ -54,9 +54,7 @@ monoGo err polys t0 = do
   (polys', ctx, ty) <- deconstructType' err t0
   case polys' ++ polys of
     [] -> return Nothing
-    _  -> do
-      ty' <- monomorphiseType' err (polys' ++ polys) ty
-      return (Just ty')
+    _  -> Just <$> monomorphiseType' err (polys' ++ polys) ty
 
 expName :: Name -> Exp
 expName n = if isVar n then VarE n else ConE n
